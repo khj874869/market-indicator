@@ -18,6 +18,9 @@
 - 중복·시간 공백·순서 오류·거래량 누락·비정상 급등락 OHLCV 품질 진단
 - 상승·하락·횡보·고변동·전환 시장 국면 탐지
 - `15m`, `1h`, `4h`, `1d` 등 다중 시간대 가중 합의와 불일치 감점
+- 비중첩 시간 구간별 워크포워드 강건성 검증
+- 블록 부트스트랩 몬테카를로 손실확률·꼬리위험·낙폭 스트레스 테스트
+- 신호·변동성·상관관계·종목별 상한을 반영한 주식/코인 포트폴리오 배분
 - 수수료·슬리피지·MDD·Sharpe·Profit Factor·벤치마크 초과수익 백테스트
 - Yahoo Finance, Binance, Upbit 공개 시세 어댑터
 - CSV/JSON CLI, 의존성 없는 JSON HTTP API, 반응형 웹 대시보드
@@ -134,6 +137,29 @@ unified-indicator multi \
 상승 국면의 하락 신호, 하락 국면의 상승 신호, 고변동성 구간의 신호는 자동 감점됩니다.
 리샘플링 후 60봉을 확보하지 못한 시간대는 오류 대신 제외 사유와 함께 반환됩니다.
 
+## 전략 강건성 검증
+
+```bash
+unified-indicator walk-forward \
+  --symbol BTCUSDT \
+  --asset-class crypto \
+  --input data/btc.csv \
+  --test-size 60
+
+unified-indicator stress \
+  --symbol BTCUSDT \
+  --asset-class crypto \
+  --input data/btc.csv \
+  --paths 1000 \
+  --block-size 5 \
+  --seed 42
+```
+
+워크포워드는 미래 데이터를 섞지 않은 비중첩 구간별 수익률·Sharpe·MDD를 집계해
+`ROBUST`, `STABLE`, `FRAGILE`, `WEAK` 등급을 계산합니다. 몬테카를로 검증은 백테스트
+수익률을 연속 블록으로 재표본화해 5% 수익률, 기대손실, 손실 확률과 95% 낙폭을 제공합니다.
+이는 미래 가격 예측이 아니라 전략 결과의 불확실성을 측정하는 도구입니다.
+
 ## 다중 종목 스캔
 
 스캔 매니페스트는 분석할 로컬 데이터 파일을 나열합니다.
@@ -156,6 +182,21 @@ unified-indicator scan \
 `opportunity_score = abs(signal score) × confidence / 100`으로 계산해 강한 양방향 기회를
 우선 정렬하며 `bullish`, `bearish` 필터를 지원합니다.
 
+## 상관관계 기반 포트폴리오
+
+```bash
+unified-indicator portfolio \
+  --manifest examples/scan_manifest.json \
+  --account-equity 10000000 \
+  --total-allocation-pct 80 \
+  --max-asset-pct 25 \
+  --lookback 60
+```
+
+`BUY`와 `STRONG_BUY`만 편입하고 신뢰도에 비례, 변동성에 반비례하도록 원시 비중을
+계산합니다. 서로 높은 양의 상관관계를 보이는 자산은 감점하며 종목별 한도를 적용한 뒤
+배분 금액, 현금 비중, 상관행렬과 위험 기여도를 반환합니다.
+
 ## HTTP API
 
 ```bash
@@ -169,7 +210,10 @@ curl http://127.0.0.1:8080/health
 - `POST /multi-timeframe`
 - `POST /risk-plan`
 - `POST /scan`
+- `POST /portfolio`
 - `POST /backtest`
+- `POST /walk-forward`
+- `POST /stress`
 
 요청 본문 예시:
 
@@ -225,6 +269,8 @@ src/unified_market_indicator/
 ├── quality.py           # OHLCV 무결성·시간 간격 진단
 ├── regime.py            # 시장 국면 분류
 ├── timeframe.py         # 리샘플링·다중 시간대 합의
+├── validation.py        # 워크포워드·몬테카를로 검증
+├── portfolio.py         # 상관관계·변동성 기반 배분
 ├── cli.py               # analyze/quality/regime/multi/risk/scan 등
 ├── server.py            # HTTP API와 대시보드 서버
 ├── static/              # 의존성 없는 반응형 대시보드

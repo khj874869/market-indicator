@@ -8,10 +8,13 @@ from unified_market_indicator.server import (
     _backtest,
     _decision,
     _multi_timeframe,
+    _portfolio,
     _quality,
     _regime,
     _risk_plan,
     _scan,
+    _stress,
+    _walk_forward,
 )
 
 
@@ -48,6 +51,24 @@ class ServerContractTest(unittest.TestCase):
         static = files("unified_market_indicator.static")
         self.assertIn("Market Signal Lab", static.joinpath("index.html").read_text(encoding="utf-8"))
         self.assertGreater(len(static.joinpath("app.js").read_bytes()), 1_000)
+
+    def test_validation_stress_and_portfolio_contracts(self) -> None:
+        walk = _walk_forward({**self.payload, "test_size": 60})
+        stress = _stress({**self.payload, "paths": 100})
+        bullish_candles = [candle.as_dict() for candle in synthetic_candles(trend=0)]
+        portfolio = _portfolio(
+            {
+                "markets": [
+                    {"symbol": "BTC", "asset_class": "crypto", "candles": bullish_candles},
+                    {"symbol": "AAPL", "asset_class": "stock", "candles": bullish_candles},
+                ],
+                "account_equity": 20_000,
+            }
+        )
+        self.assertEqual(walk["fold_count"], 3)
+        self.assertEqual(stress["paths"], 100)
+        self.assertEqual(len(portfolio["allocations"]), 2)
+        self.assertIn("cash_pct", portfolio)
 
 
 if __name__ == "__main__":

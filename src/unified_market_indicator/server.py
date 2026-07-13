@@ -8,12 +8,14 @@ from typing import Any
 
 from .backtest import Backtester
 from .engine import UnifiedIndicatorEngine
-from .models import AssetClass, Candle, SignalDecision
+from .models import AssetClass, BacktestResult, Candle, SignalDecision
+from .portfolio import PortfolioAllocator
 from .quality import DataQualityAnalyzer
 from .regime import MarketRegimeDetector
 from .risk import RiskManager
 from .scanner import MarketScanner, MarketSeries
 from .timeframe import MultiTimeframeAnalyzer
+from .validation import MonteCarloStressTester, WalkForwardValidator
 
 
 def _candles(payload: dict[str, Any]) -> list[Candle]:
@@ -93,8 +95,26 @@ def _scan(payload: dict[str, Any]) -> dict[str, Any]:
     return result.as_dict()
 
 
-def _backtest(payload: dict[str, Any]) -> dict[str, Any]:
-    result = Backtester(
+def _portfolio(payload: dict[str, Any]) -> dict[str, Any]:
+    markets = [
+        MarketSeries(
+            symbol=item["symbol"],
+            asset_class=AssetClass(item["asset_class"]),
+            candles=_candles(item),
+        )
+        for item in payload["markets"]
+    ]
+    return PortfolioAllocator().allocate(
+        markets,
+        account_equity=float(payload.get("account_equity", 10_000)),
+        total_allocation_pct=float(payload.get("total_allocation_pct", 80)),
+        max_asset_pct=float(payload.get("max_asset_pct", 25)),
+        lookback=int(payload.get("lookback", 60)),
+    ).as_dict()
+
+
+def _backtest_object(payload: dict[str, Any]) -> BacktestResult:
+    return Backtester(
         initial_capital=float(payload.get("initial_capital", 10_000)),
         fee_bps=float(payload.get("fee_bps", 10)),
         slippage_bps=float(payload.get("slippage_bps", 5)),
@@ -103,21 +123,53 @@ def _backtest(payload: dict[str, Any]) -> dict[str, Any]:
         atr_stop_multiple=float(payload.get("atr_stop_multiple", 2)),
         reward_risk_ratio=float(payload.get("reward_risk_ratio", 2)),
     ).run(payload["symbol"], AssetClass(payload["asset_class"]), _candles(payload))
-    return result.as_dict()
+
+
+def _backtest(payload: dict[str, Any]) -> dict[str, Any]:
+    return _backtest_object(payload).as_dict()
+
+
+def _walk_forward(payload: dict[str, Any]) -> dict[str, Any]:
+    return WalkForwardValidator(
+        initial_capital=float(payload.get("initial_capital", 10_000)),
+        fee_bps=float(payload.get("fee_bps", 10)),
+        slippage_bps=float(payload.get("slippage_bps", 5)),
+        risk_per_trade_pct=float(payload.get("risk_per_trade_pct", 1)),
+        max_allocation_pct=float(payload.get("max_allocation_pct", 25)),
+        atr_stop_multiple=float(payload.get("atr_stop_multiple", 2)),
+        reward_risk_ratio=float(payload.get("reward_risk_ratio", 2)),
+    ).run(
+        payload["symbol"],
+        AssetClass(payload["asset_class"]),
+        _candles(payload),
+        test_size=int(payload.get("test_size", 60)),
+    ).as_dict()
+
+
+def _stress(payload: dict[str, Any]) -> dict[str, Any]:
+    return MonteCarloStressTester().run(
+        _backtest_object(payload),
+        paths=int(payload.get("paths", 1_000)),
+        horizon=int(payload["horizon"]) if payload.get("horizon") is not None else None,
+        block_size=int(payload.get("block_size", 5)),
+        seed=int(payload.get("seed", 42)),
+    ).as_dict()
 
 
 class IndicatorRequestHandler(BaseHTTPRequestHandler):
-    server_version = "UnifiedMarketIndicator/0.3"
+    server_version = "UnifiedMarketIndicator/0.4"
 
     def do_GET(self) -> None:
         if self.path == "/health":
-            self._send_json(HTTPStatus.OK, {"status": "ok", "version": "0.3.0"})
+            self._send_json(HTTPStatus.OK, {"status": "ok", "version": "0.4.0"})
         elif self.path == "/":
             self._send_asset("index.html", "text/html; charset=utf-8")
         elif self.path == "/assets/styles.css":
             self._send_asset("styles.css", "text/css; charset=utf-8")
         elif self.path == "/assets/context.css":
             self._send_asset("context.css", "text/css; charset=utf-8")
+        elif self.path == "/assets/robustness.css":
+            self._send_asset("robustness.css", "text/css; charset=utf-8")
         elif self.path == "/assets/app.js":
             self._send_asset("app.js", "text/javascript; charset=utf-8")
         else:
@@ -136,7 +188,10 @@ class IndicatorRequestHandler(BaseHTTPRequestHandler):
                 "/multi-timeframe": _multi_timeframe,
                 "/risk-plan": _risk_plan,
                 "/scan": _scan,
+                "/portfolio": _portfolio,
                 "/backtest": _backtest,
+                "/walk-forward": _walk_forward,
+                "/stress": _stress,
             }
             handler = handlers.get(self.path)
             if handler is None:

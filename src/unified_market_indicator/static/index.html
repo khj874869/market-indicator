@@ -6,12 +6,13 @@
   <title>Market Signal Lab</title>
   <link rel="stylesheet" href="/assets/styles.css">
   <link rel="stylesheet" href="/assets/context.css">
+  <link rel="stylesheet" href="/assets/robustness.css">
 </head>
 <body>
   <div class="shell">
     <header>
       <div class="brand"><span class="brand-mark">M</span><div><b>MARKET SIGNAL LAB</b><small>STOCK + CRYPTO INTELLIGENCE</small></div></div>
-      <div class="status"><span></span>ENGINE ONLINE · v0.3</div>
+      <div class="status"><span></span>ENGINE ONLINE · v0.4</div>
     </header>
 
     <main>
@@ -26,7 +27,7 @@
         <label>계좌 평가액<input id="equity" type="number" min="1" value="10000"></label>
         <label>거래당 위험 %<input id="risk" type="number" min="0.1" max="100" step="0.1" value="1"></label>
         <label>분석 시간대<input id="timeframes" value="1h,4h,1d" autocomplete="off"></label>
-        <div class="actions"><button id="sample" class="button ghost">샘플 생성</button><button id="analyze" class="button primary">분석 실행</button><button id="backtest" class="button">백테스트</button></div>
+        <div class="actions"><button id="sample" class="button ghost">샘플 생성</button><button id="analyze" class="button primary">분석 실행</button><button id="backtest" class="button">백테스트</button><button id="validate" class="button">강건성 검증</button></div>
       </section>
 
       <details class="data-panel"><summary>OHLCV JSON 데이터 <span id="candle-count">0 CANDLES</span></summary><textarea id="candles" spellcheck="false"></textarea></details>
@@ -80,6 +81,16 @@
             <div><span>최대 낙폭</span><b id="drawdown">--</b></div><div><span>Sharpe</span><b id="sharpe">--</b></div>
             <div><span>승률</span><b id="win-rate">--</b></div><div><span>Profit Factor</span><b id="profit-factor">--</b></div>
           </div>
+        </article>
+
+        <article class="card robustness-card">
+          <div class="card-head"><span>STRATEGY ROBUSTNESS</span><span id="robustness-summary">NOT VALIDATED</span></div>
+          <div class="metric-grid compact robustness-metrics">
+            <div><span>강건성 점수</span><b id="robustness-score">--</b></div><div><span>평가</span><b id="robustness-rating">--</b></div>
+            <div><span>양수 구간 비율</span><b id="fold-consistency">--</b></div><div><span>최악 구간 수익</span><b id="worst-fold">--</b></div>
+            <div><span>Monte Carlo P05</span><b id="stress-p05">--</b></div><div><span>손실 확률</span><b id="loss-probability">--</b></div>
+          </div>
+          <div id="folds" class="fold-strip"><span>워크포워드 검증 대기 중</span></div>
         </article>
       </section>
     </main>

@@ -95,6 +95,27 @@ async function backtest() {
   } catch (error) { showError(error); } finally { setBusy(false); }
 }
 
+async function validate() {
+  setBusy(true); clearError();
+  try {
+    const body = {...payload(), initial_capital: Number($("equity").value), risk_per_trade_pct: Number($("risk").value), test_size: 60, paths: 500};
+    const [walk, stress] = await Promise.all([request("/walk-forward", body), request("/stress", body)]);
+    $("robustness-score").textContent = number(walk.robustness_score, 0);
+    $("robustness-rating").textContent = walk.rating;
+    $("robustness-rating").className = `rating-${walk.rating.toLowerCase()}`;
+    $("fold-consistency").textContent = percent(walk.consistency_pct);
+    $("worst-fold").textContent = percent(walk.worst_return_pct);
+    $("stress-p05").textContent = percent(stress.p05_return_pct);
+    $("loss-probability").textContent = percent(stress.probability_of_loss_pct);
+    $("robustness-summary").textContent = `${walk.fold_count} FOLDS · ${stress.paths} PATHS`;
+    const maxMove = Math.max(1, ...walk.folds.map((fold) => Math.abs(fold.total_return_pct)));
+    $("folds").innerHTML = walk.folds.map((fold) => {
+      const height = Math.max(3, Math.abs(fold.total_return_pct) / maxMove * 38);
+      return `<div class="fold-bar ${fold.positive ? "" : "negative"}"><i style="height:${height}px"></i><b>F${fold.fold}</b><span>${percent(fold.total_return_pct)}</span></div>`;
+    }).join("");
+  } catch (error) { showError(error); } finally { setBusy(false); }
+}
+
 function drawChart(values) {
   const canvas = $("chart"), ctx = canvas.getContext("2d"), ratio = window.devicePixelRatio || 1;
   const width = canvas.clientWidth, height = canvas.clientHeight;
@@ -110,8 +131,8 @@ function drawChart(values) {
 }
 
 function updateCount() { try { $("candle-count").textContent = `${JSON.parse($("candles").value || "[]").length} CANDLES`; } catch { $("candle-count").textContent = "INVALID JSON"; } }
-function setBusy(value) { [$("analyze"), $("backtest")].forEach((button) => { button.disabled = value; }); }
+function setBusy(value) { [$("analyze"), $("backtest"), $("validate")].forEach((button) => { button.disabled = value; }); }
 function clearError() { $("error").textContent = ""; }
 function showError(error) { $("error").textContent = error.message; }
-$("sample").addEventListener("click", sampleCandles); $("analyze").addEventListener("click", analyze); $("backtest").addEventListener("click", backtest); $("candles").addEventListener("input", updateCount); window.addEventListener("resize", () => {});
+$("sample").addEventListener("click", sampleCandles); $("analyze").addEventListener("click", analyze); $("backtest").addEventListener("click", backtest); $("validate").addEventListener("click", validate); $("candles").addEventListener("input", updateCount); window.addEventListener("resize", () => {});
 sampleCandles();

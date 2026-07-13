@@ -8,6 +8,7 @@ from .backtest import Backtester
 from .engine import UnifiedIndicatorEngine
 from .io import read_candles, write_candles
 from .models import AssetClass
+from .portfolio import PortfolioAllocator
 from .providers import PROVIDERS
 from .quality import DataQualityAnalyzer
 from .regime import MarketRegimeDetector
@@ -15,6 +16,7 @@ from .risk import RiskManager
 from .scanner import MarketScanner, MarketSeries
 from .server import serve
 from .timeframe import MultiTimeframeAnalyzer
+from .validation import MonteCarloStressTester, WalkForwardValidator
 
 
 def _asset_class(value: str) -> AssetClass:
@@ -26,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="unified-indicator",
         description="Unified technical indicator engine for stocks and crypto.",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 0.3.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 0.4.0")
     commands = parser.add_subparsers(dest="command", required=True)
 
     analyze = commands.add_parser("analyze", help="Analyze a local OHLCV file")
@@ -48,6 +50,22 @@ def build_parser() -> argparse.ArgumentParser:
     multi.add_argument("--input", type=Path, required=True)
     multi.add_argument("--timeframes", default="1h,4h,1d")
 
+    walk_forward = commands.add_parser("walk-forward", help="Validate strategy consistency by time fold")
+    walk_forward.add_argument("--symbol", required=True)
+    walk_forward.add_argument("--asset-class", type=_asset_class, choices=list(AssetClass), required=True)
+    walk_forward.add_argument("--input", type=Path, required=True)
+    walk_forward.add_argument("--test-size", type=int, default=60)
+    walk_forward.add_argument("--initial-capital", type=float, default=10_000)
+
+    stress = commands.add_parser("stress", help="Run block-bootstrap Monte Carlo stress testing")
+    stress.add_argument("--symbol", required=True)
+    stress.add_argument("--asset-class", type=_asset_class, choices=list(AssetClass), required=True)
+    stress.add_argument("--input", type=Path, required=True)
+    stress.add_argument("--paths", type=int, default=1_000)
+    stress.add_argument("--block-size", type=int, default=5)
+    stress.add_argument("--seed", type=int, default=42)
+    stress.add_argument("--initial-capital", type=float, default=10_000)
+
     risk = commands.add_parser("risk", help="Create an ATR-based position and exit plan")
     risk.add_argument("--symbol", required=True)
     risk.add_argument("--asset-class", type=_asset_class, choices=list(AssetClass), required=True)
@@ -64,6 +82,13 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--min-confidence", type=float, default=0)
     scan.add_argument("--limit", type=int)
     scan.add_argument("--account-equity", type=float, default=10_000)
+
+    portfolio = commands.add_parser("portfolio", help="Build a capped correlation-aware allocation")
+    portfolio.add_argument("--manifest", type=Path, required=True)
+    portfolio.add_argument("--account-equity", type=float, default=10_000)
+    portfolio.add_argument("--total-allocation-pct", type=float, default=80)
+    portfolio.add_argument("--max-asset-pct", type=float, default=25)
+    portfolio.add_argument("--lookback", type=int, default=60)
 
     backtest = commands.add_parser("backtest", help="Backtest the unified signal")
     backtest.add_argument("--symbol", required=True)
@@ -114,6 +139,25 @@ def main(argv: list[str] | None = None) -> int:
             timeframes,
         )
         print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "walk-forward":
+        result = WalkForwardValidator(initial_capital=args.initial_capital).run(
+            args.symbol,
+            args.asset_class,
+            read_candles(args.input),
+            test_size=args.test_size,
+        )
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "stress":
+        backtest_result = Backtester(initial_capital=args.initial_capital).run(
+            args.symbol, args.asset_class, read_candles(args.input)
+        )
+        result = MonteCarloStressTester().run(
+            backtest_result,
+            paths=args.paths,
+            block_size=args.block_size,
+            seed=args.seed,
+        )
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     elif args.command == "risk":
         decision = UnifiedIndicatorEngine().analyze(
             args.symbol,
@@ -145,6 +189,24 @@ def main(argv: list[str] | None = None) -> int:
             direction=args.direction,
             min_confidence=args.min_confidence,
             limit=args.limit,
+        )
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "portfolio":
+        manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+        markets = [
+            MarketSeries(
+                symbol=item["symbol"],
+                asset_class=AssetClass(item["asset_class"]),
+                candles=read_candles(args.manifest.parent / item["input"]),
+            )
+            for item in manifest
+        ]
+        result = PortfolioAllocator().allocate(
+            markets,
+            account_equity=args.account_equity,
+            total_allocation_pct=args.total_allocation_pct,
+            max_asset_pct=args.max_asset_pct,
+            lookback=args.lookback,
         )
         print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     elif args.command == "backtest":

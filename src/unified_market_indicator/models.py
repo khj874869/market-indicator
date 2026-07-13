@@ -310,6 +310,156 @@ class MultiTimeframeResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class WalkForwardFold:
+    fold: int
+    start: datetime
+    end: datetime
+    test_candles: int
+    total_return_pct: float
+    max_drawdown_pct: float
+    sharpe_ratio: float
+    trades: int
+    positive: bool
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "fold": self.fold,
+            "start": self.start.isoformat(),
+            "end": self.end.isoformat(),
+            "test_candles": self.test_candles,
+            "total_return_pct": self.total_return_pct,
+            "max_drawdown_pct": self.max_drawdown_pct,
+            "sharpe_ratio": self.sharpe_ratio,
+            "trades": self.trades,
+            "positive": self.positive,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class WalkForwardResult:
+    symbol: str
+    asset_class: AssetClass
+    fold_count: int
+    positive_folds: int
+    total_trades: int
+    average_trades_per_fold: float
+    consistency_pct: float
+    average_return_pct: float
+    worst_return_pct: float
+    average_sharpe_ratio: float
+    worst_drawdown_pct: float
+    robustness_score: float
+    rating: str
+    folds: tuple[WalkForwardFold, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "asset_class": self.asset_class.value,
+            "fold_count": self.fold_count,
+            "positive_folds": self.positive_folds,
+            "total_trades": self.total_trades,
+            "average_trades_per_fold": self.average_trades_per_fold,
+            "consistency_pct": self.consistency_pct,
+            "average_return_pct": self.average_return_pct,
+            "worst_return_pct": self.worst_return_pct,
+            "average_sharpe_ratio": self.average_sharpe_ratio,
+            "worst_drawdown_pct": self.worst_drawdown_pct,
+            "robustness_score": self.robustness_score,
+            "rating": self.rating,
+            "folds": [fold.as_dict() for fold in self.folds],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class StressTestResult:
+    baseline_return_pct: float
+    paths: int
+    horizon: int
+    block_size: int
+    seed: int
+    median_return_pct: float
+    p05_return_pct: float
+    p95_return_pct: float
+    expected_shortfall_pct: float
+    median_max_drawdown_pct: float
+    p95_max_drawdown_pct: float
+    probability_of_loss_pct: float
+    probability_of_50pct_ruin_pct: float
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "baseline_return_pct": self.baseline_return_pct,
+            "paths": self.paths,
+            "horizon": self.horizon,
+            "block_size": self.block_size,
+            "seed": self.seed,
+            "median_return_pct": self.median_return_pct,
+            "p05_return_pct": self.p05_return_pct,
+            "p95_return_pct": self.p95_return_pct,
+            "expected_shortfall_pct": self.expected_shortfall_pct,
+            "median_max_drawdown_pct": self.median_max_drawdown_pct,
+            "p95_max_drawdown_pct": self.p95_max_drawdown_pct,
+            "probability_of_loss_pct": self.probability_of_loss_pct,
+            "probability_of_50pct_ruin_pct": self.probability_of_50pct_ruin_pct,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PortfolioAllocation:
+    symbol: str
+    asset_class: AssetClass
+    signal: Signal
+    score: float
+    confidence: float
+    volatility_pct: float
+    correlation_penalty: float
+    weight_pct: float
+    allocation_amount: float
+    risk_contribution_pct: float
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "asset_class": self.asset_class.value,
+            "signal": self.signal.value,
+            "score": self.score,
+            "confidence": self.confidence,
+            "volatility_pct": self.volatility_pct,
+            "correlation_penalty": self.correlation_penalty,
+            "weight_pct": self.weight_pct,
+            "allocation_amount": self.allocation_amount,
+            "risk_contribution_pct": self.risk_contribution_pct,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PortfolioResult:
+    account_equity: float
+    invested_pct: float
+    cash_pct: float
+    average_correlation: float
+    diversification_score: float
+    allocations: tuple[PortfolioAllocation, ...]
+    rejected: dict[str, str]
+    correlation_matrix: dict[str, dict[str, float]]
+    warnings: tuple[str, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "account_equity": self.account_equity,
+            "invested_pct": self.invested_pct,
+            "cash_pct": self.cash_pct,
+            "average_correlation": self.average_correlation,
+            "diversification_score": self.diversification_score,
+            "allocations": [item.as_dict() for item in self.allocations],
+            "rejected": self.rejected,
+            "correlation_matrix": self.correlation_matrix,
+            "warnings": list(self.warnings),
+        }
+
+
 @dataclass(slots=True)
 class BacktestResult:
     symbol: str
