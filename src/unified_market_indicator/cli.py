@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="unified-indicator",
         description="Unified technical indicator engine for stocks and crypto.",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 0.4.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 0.5.0")
     commands = parser.add_subparsers(dest="command", required=True)
 
     analyze = commands.add_parser("analyze", help="Analyze a local OHLCV file")

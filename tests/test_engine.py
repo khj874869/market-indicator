@@ -20,7 +20,30 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(crypto.asset_class, AssetClass.CRYPTO)
         self.assertGreaterEqual(stock.score, -100)
         self.assertLessEqual(stock.score, 100)
-        self.assertEqual(set(stock.components), {"trend", "momentum", "volatility", "volume"})
+        self.assertEqual(
+            set(stock.components),
+            {"trend", "momentum", "volatility", "volume", "confirmation"},
+        )
+        self.assertGreaterEqual(stock.agreement_pct, 0)
+        self.assertLessEqual(stock.agreement_pct, 100)
+        self.assertGreaterEqual(stock.conflict_penalty, 0)
+
+    def test_adx_adapts_trend_and_confirmation_score(self) -> None:
+        strong_trend = synthetic_candles(trend=0.3, oscillation=0)
+        decision = self.engine.analyze("AAPL", AssetClass.STOCK, strong_trend)
+        self.assertGreater(decision.components["trend"], 28)
+        self.assertGreater(decision.components["confirmation"], 0)
+        self.assertGreater(decision.snapshot.adx, 25)
+        self.assertGreater(decision.agreement_pct, 50)
+
+    def test_flat_market_does_not_create_false_bearish_trend(self) -> None:
+        flat = synthetic_candles(trend=0, oscillation=0)
+        decision = self.engine.analyze("BTCUSDT", AssetClass.CRYPTO, flat)
+        self.assertEqual(decision.components["trend"], 0)
+        self.assertEqual(decision.components["confirmation"], 0)
+        self.assertEqual(decision.score, 0)
+        self.assertEqual(decision.signal, Signal.HOLD)
+        self.assertLess(decision.confidence, 20)
 
     def test_rejects_short_or_duplicate_series(self) -> None:
         with self.assertRaises(ValueError):
@@ -42,7 +65,10 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(result.winning_trades + result.losing_trades, result.trades)
         self.assertLessEqual(result.stop_loss_exits + result.take_profit_exits, result.trades)
         self.assertIsInstance(result.sharpe_ratio, float)
-        self.assertEqual(result.excess_return_pct, round(result.total_return_pct - result.benchmark_return_pct, 4))
+        self.assertEqual(
+            result.excess_return_pct,
+            round(result.total_return_pct - result.benchmark_return_pct, 4),
+        )
 
 
 if __name__ == "__main__":

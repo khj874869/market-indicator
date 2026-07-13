@@ -157,11 +157,11 @@ def _stress(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class IndicatorRequestHandler(BaseHTTPRequestHandler):
-    server_version = "UnifiedMarketIndicator/0.4"
+    server_version = "UnifiedMarketIndicator/0.5"
 
     def do_GET(self) -> None:
         if self.path == "/health":
-            self._send_json(HTTPStatus.OK, {"status": "ok", "version": "0.4.0"})
+            self._send_json(HTTPStatus.OK, {"status": "ok", "version": "0.5.0"})
         elif self.path == "/":
             self._send_asset("index.html", "text/html; charset=utf-8")
         elif self.path == "/assets/styles.css":
@@ -170,6 +170,8 @@ class IndicatorRequestHandler(BaseHTTPRequestHandler):
             self._send_asset("context.css", "text/css; charset=utf-8")
         elif self.path == "/assets/robustness.css":
             self._send_asset("robustness.css", "text/css; charset=utf-8")
+        elif self.path == "/assets/adaptive.css":
+            self._send_asset("adaptive.css", "text/css; charset=utf-8")
         elif self.path == "/assets/app.js":
             self._send_asset("app.js", "text/javascript; charset=utf-8")
         else:

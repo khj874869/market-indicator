@@ -4,12 +4,16 @@ import unittest
 
 from helpers import synthetic_candles
 from unified_market_indicator.indicators import (
+    adx,
     atr,
     bollinger_bands,
     ema,
     macd,
+    money_flow_index,
     obv,
+    rate_of_change,
     rsi,
+    rolling_vwap,
     sma,
     snapshot,
     stochastic,
@@ -51,6 +55,29 @@ class IndicatorTest(unittest.TestCase):
         result = snapshot(self.candles)
         self.assertEqual(result.close, self.candles[-1].close)
         self.assertIsNotNone(result.rsi)
+        self.assertIsNotNone(result.adx)
+        self.assertIsNotNone(result.mfi)
+        self.assertIsNotNone(result.roc)
+        self.assertIsNotNone(result.vwap)
+
+    def test_adaptive_indicators_are_bounded_and_aligned(self) -> None:
+        plus_di, minus_di, adx_values = adx(self.candles)
+        valid_adx = [value for value in adx_values if value is not None]
+        valid_plus = [value for value in plus_di if value is not None]
+        valid_minus = [value for value in minus_di if value is not None]
+        mfi_values = [value for value in money_flow_index(self.candles) if value is not None]
+        roc_values = rate_of_change(self.closes)
+        vwap_values = rolling_vwap(self.candles)
+
+        self.assertTrue(valid_adx)
+        self.assertTrue(all(0 <= value <= 100 for value in valid_adx))
+        self.assertTrue(all(0 <= value <= 100 for value in valid_plus))
+        self.assertTrue(all(0 <= value <= 100 for value in valid_minus))
+        self.assertTrue(all(0 <= value <= 100 for value in mfi_values))
+        self.assertIsNotNone(roc_values[-1])
+        self.assertIsNotNone(vwap_values[-1])
+        self.assertGreaterEqual(vwap_values[-1], min(candle.low for candle in self.candles[-20:]))
+        self.assertLessEqual(vwap_values[-1], max(candle.high for candle in self.candles[-20:]))
 
 
 if __name__ == "__main__":

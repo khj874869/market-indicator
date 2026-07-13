@@ -7,17 +7,18 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <link rel="stylesheet" href="/assets/context.css">
   <link rel="stylesheet" href="/assets/robustness.css">
+  <link rel="stylesheet" href="/assets/adaptive.css">
 </head>
 <body>
   <div class="shell">
     <header>
       <div class="brand"><span class="brand-mark">M</span><div><b>MARKET SIGNAL LAB</b><small>STOCK + CRYPTO INTELLIGENCE</small></div></div>
-      <div class="status"><span></span>ENGINE ONLINE · v0.4</div>
+      <div class="status"><span></span>ENGINE ONLINE · v0.5</div>
     </header>
 
     <main>
       <section class="hero">
-        <div><p class="eyebrow">UNIFIED MARKET RESEARCH</p><h1>신호보다 먼저,<br><em>리스크를 계산합니다.</em></h1><p>추세·모멘텀·변동성·거래량을 하나의 점수로 통합하고 ATR 기준 포지션 계획과 비용 반영 백테스트를 제공합니다.</p></div>
+        <div><p class="eyebrow">ADAPTIVE MARKET RESEARCH</p><h1>신호보다 먼저,<br><em>근거와 충돌을 계산합니다.</em></h1><p>추세·모멘텀·변동성·거래량에 ADX·MFI·ROC·VWAP 확인 계층을 더하고, 구성요소 충돌까지 반영한 신뢰도와 ATR 리스크 계획을 제공합니다.</p></div>
         <div class="hero-orbit"><div class="orbit-value" id="hero-score">--</div><span>COMPOSITE SCORE</span></div>
       </section>
 
@@ -42,6 +43,17 @@
         <article class="card component-card">
           <div class="card-head"><span>SCORE BREAKDOWN</span><span>-100 / +100</span></div>
           <div id="components" class="bars"><p class="empty">분석 대기 중</p></div>
+        </article>
+
+        <article class="card adaptive-card">
+          <div class="card-head"><span>ADAPTIVE EVIDENCE</span><span id="adaptive-status">WAITING FOR ANALYSIS</span></div>
+          <div class="metric-grid adaptive-metrics">
+            <div><span>ADX 추세 강도</span><b id="adx">--</b></div><div><span>+DI / -DI</span><b id="directional-index">--</b></div>
+            <div><span>MFI 자금 흐름</span><b id="mfi">--</b></div><div><span>ROC 12</span><b id="roc">--</b></div>
+            <div><span>VWAP 괴리</span><b id="vwap-distance">--</b></div><div><span>구성 합의율</span><b id="component-agreement">--</b></div>
+            <div><span>충돌 감점</span><b id="conflict-penalty">--</b></div>
+          </div>
+          <p id="adaptive-note" class="warning">지표 간 독립 확인과 추세 강도 보정 결과가 표시됩니다.</p>
         </article>
 
         <article class="card context-card">

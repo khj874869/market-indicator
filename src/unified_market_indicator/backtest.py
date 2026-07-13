@@ -168,19 +168,21 @@ class Backtester:
         gross_loss = abs(sum(value for value in trade_profits if value < 0))
         profit_factor = round(gross_profit / gross_loss, 4) if gross_loss else None
         completed_trades = wins + losses
+        total_return_pct = round(total_return, 4)
+        benchmark_return_pct = round(benchmark, 4)
         return BacktestResult(
             symbol=symbol.upper(),
             asset_class=asset_class,
             initial_capital=self.initial_capital,
             final_equity=round(cash, 4),
-            total_return_pct=round(total_return, 4),
+            total_return_pct=total_return_pct,
             max_drawdown_pct=round(max_drawdown * 100, 4),
             trades=trades,
             winning_trades=wins,
             losing_trades=losses,
             win_rate_pct=round((wins / completed_trades * 100) if completed_trades else 0.0, 4),
-            benchmark_return_pct=round(benchmark, 4),
-            excess_return_pct=round(total_return - benchmark, 4),
+            benchmark_return_pct=benchmark_return_pct,
+            excess_return_pct=round(total_return_pct - benchmark_return_pct, 4),
             annualized_return_pct=round(annualized, 4),
             sharpe_ratio=round(sharpe, 4),
             profit_factor=profit_factor,

@@ -163,6 +163,125 @@ def obv(candles: Sequence[Candle]) -> list[float]:
     return output
 
 
+def adx(
+    candles: Sequence[Candle],
+    period: int = 14,
+) -> tuple[list[float | None], list[float | None], list[float | None]]:
+    _validate_period(period)
+    length = len(candles)
+    plus_di: list[float | None] = [None] * length
+    minus_di: list[float | None] = [None] * length
+    adx_values: list[float | None] = [None] * length
+    if length <= period:
+        return plus_di, minus_di, adx_values
+    true_ranges = [0.0] * length
+    plus_dm = [0.0] * length
+    minus_dm = [0.0] * length
+    for index in range(1, length):
+        previous = candles[index - 1]
+        current = candles[index]
+        true_ranges[index] = max(
+            current.high - current.low,
+            abs(current.high - previous.close),
+            abs(current.low - previous.close),
+        )
+        upward = current.high - previous.high
+        downward = previous.low - current.low
+        plus_dm[index] = upward if upward > downward and upward > 0 else 0.0
+        minus_dm[index] = downward if downward > upward and downward > 0 else 0.0
+
+    smoothed_tr = sum(true_ranges[1 : period + 1])
+    smoothed_plus = sum(plus_dm[1 : period + 1])
+    smoothed_minus = sum(minus_dm[1 : period + 1])
+    dx_values: list[float | None] = [None] * length
+    for index in range(period, length):
+        if index > period:
+            smoothed_tr = smoothed_tr - smoothed_tr / period + true_ranges[index]
+            smoothed_plus = smoothed_plus - smoothed_plus / period + plus_dm[index]
+            smoothed_minus = smoothed_minus - smoothed_minus / period + minus_dm[index]
+        if smoothed_tr == 0:
+            plus_value = minus_value = 0.0
+        else:
+            plus_value = 100 * smoothed_plus / smoothed_tr
+            minus_value = 100 * smoothed_minus / smoothed_tr
+        plus_di[index] = plus_value
+        minus_di[index] = minus_value
+        total = plus_value + minus_value
+        dx_values[index] = 0.0 if total == 0 else 100 * abs(plus_value - minus_value) / total
+
+    first_adx_index = period * 2 - 1
+    if first_adx_index < length:
+        seed = [value for value in dx_values[period : first_adx_index + 1] if value is not None]
+        previous_adx = sum(seed) / len(seed)
+        adx_values[first_adx_index] = previous_adx
+        for index in range(first_adx_index + 1, length):
+            current_dx = dx_values[index]
+            assert current_dx is not None
+            previous_adx = ((previous_adx * (period - 1)) + current_dx) / period
+            adx_values[index] = previous_adx
+    return plus_di, minus_di, adx_values
+
+
+def money_flow_index(candles: Sequence[Candle], period: int = 14) -> list[float | None]:
+    _validate_period(period)
+    output: list[float | None] = [None] * len(candles)
+    if len(candles) <= period:
+        return output
+    typical = [(candle.high + candle.low + candle.close) / 3 for candle in candles]
+    positive = [0.0] * len(candles)
+    negative = [0.0] * len(candles)
+    for index in range(1, len(candles)):
+        flow = typical[index] * candles[index].volume
+        if typical[index] > typical[index - 1]:
+            positive[index] = flow
+        elif typical[index] < typical[index - 1]:
+            negative[index] = flow
+    positive_sum = 0.0
+    negative_sum = 0.0
+    for index in range(1, len(candles)):
+        positive_sum += positive[index]
+        negative_sum += negative[index]
+        if index > period:
+            positive_sum = max(0.0, positive_sum - positive[index - period])
+            negative_sum = max(0.0, negative_sum - negative[index - period])
+        if index >= period:
+            if negative_sum == 0:
+                output[index] = 100.0 if positive_sum > 0 else 50.0
+            else:
+                ratio = positive_sum / negative_sum
+                output[index] = max(0.0, min(100.0, 100 - 100 / (1 + ratio)))
+    return output
+
+
+def rate_of_change(values: Sequence[float], period: int = 12) -> list[float | None]:
+    _validate_period(period)
+    output: list[float | None] = [None] * len(values)
+    for index in range(period, len(values)):
+        previous = values[index - period]
+        output[index] = None if previous == 0 else (values[index] / previous - 1) * 100
+    return output
+
+
+def rolling_vwap(candles: Sequence[Candle], period: int = 20) -> list[float | None]:
+    _validate_period(period)
+    output: list[float | None] = [None] * len(candles)
+    price_volume = [
+        ((candle.high + candle.low + candle.close) / 3) * candle.volume
+        for candle in candles
+    ]
+    volume_sum = 0.0
+    price_volume_sum = 0.0
+    for index, candle in enumerate(candles):
+        volume_sum += candle.volume
+        price_volume_sum += price_volume[index]
+        if index >= period:
+            volume_sum -= candles[index - period].volume
+            price_volume_sum -= price_volume[index - period]
+        if index >= period - 1:
+            output[index] = None if volume_sum == 0 else price_volume_sum / volume_sum
+    return output
+
+
 def snapshot(candles: Sequence[Candle]) -> IndicatorSnapshot:
     if not candles:
         raise ValueError("at least one candle is required")
@@ -178,6 +297,10 @@ def snapshot(candles: Sequence[Candle]) -> IndicatorSnapshot:
     atr_values = atr(candles)
     stochastic_k, stochastic_d = stochastic(candles)
     obv_values = obv(candles)
+    plus_di, minus_di, adx_values = adx(candles)
+    mfi_values = money_flow_index(candles)
+    roc_values = rate_of_change(closes)
+    vwap_values = rolling_vwap(candles)
     average_volume = sma(volumes, 20)
     latest_average_volume = average_volume[-1]
     volume_ratio = (
@@ -204,4 +327,10 @@ def snapshot(candles: Sequence[Candle]) -> IndicatorSnapshot:
         stochastic_d=stochastic_d[-1],
         obv=obv_values[-1],
         volume_ratio=volume_ratio,
+        adx=adx_values[-1],
+        plus_di=plus_di[-1],
+        minus_di=minus_di[-1],
+        mfi=mfi_values[-1],
+        roc=roc_values[-1],
+        vwap=vwap_values[-1],
     )

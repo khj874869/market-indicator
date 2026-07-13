@@ -30,7 +30,7 @@ class RiskAndScannerTest(unittest.TestCase):
 
     def test_hold_signal_produces_no_position(self) -> None:
         decision = UnifiedIndicatorEngine().analyze(
-            "BTCUSDT", AssetClass.CRYPTO, synthetic_candles(trend=0.12)
+            "BTCUSDT", AssetClass.CRYPTO, synthetic_candles(trend=0, oscillation=0)
         )
         plan = RiskManager().plan(decision)
         self.assertEqual(plan.direction, "FLAT")
@@ -41,7 +41,7 @@ class RiskAndScannerTest(unittest.TestCase):
         markets = [
             MarketSeries("BEAR", AssetClass.CRYPTO, synthetic_candles(trend=-0.12)),
             MarketSeries("BULL", AssetClass.STOCK, synthetic_candles(trend=0)),
-            MarketSeries("FLAT", AssetClass.CRYPTO, synthetic_candles(trend=0.12)),
+            MarketSeries("FLAT", AssetClass.CRYPTO, synthetic_candles(trend=0, oscillation=0)),
         ]
         scanner = MarketScanner()
         result = scanner.scan(markets)

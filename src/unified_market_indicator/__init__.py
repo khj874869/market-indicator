@@ -60,4 +60,4 @@ __all__ = [
     "resample_candles",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

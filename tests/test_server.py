@@ -27,7 +27,11 @@ class ServerContractTest(unittest.TestCase):
         }
 
     def test_analysis_risk_and_backtest_contracts(self) -> None:
-        self.assertIn("score", _decision(self.payload))
+        decision = _decision(self.payload)
+        self.assertIn("score", decision)
+        self.assertIn("agreement_pct", decision)
+        self.assertIn("conflict_penalty", decision)
+        self.assertIn("adx", decision["snapshot"])
         self.assertIn("position_size", _risk_plan(self.payload))
         result = _backtest(self.payload)
         self.assertIn("sharpe_ratio", result)
@@ -51,6 +55,7 @@ class ServerContractTest(unittest.TestCase):
         static = files("unified_market_indicator.static")
         self.assertIn("Market Signal Lab", static.joinpath("index.html").read_text(encoding="utf-8"))
         self.assertGreater(len(static.joinpath("app.js").read_bytes()), 1_000)
+        self.assertGreater(len(static.joinpath("adaptive.css").read_bytes()), 200)
 
     def test_validation_stress_and_portfolio_contracts(self) -> None:
         walk = _walk_forward({**self.payload, "test_size": 60})

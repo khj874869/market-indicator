@@ -35,11 +35,27 @@ function showDecision(decision, risk) {
   $("confidence").textContent = `${number(decision.confidence, 0)}%`;
   $("reason").textContent = decision.reasons.slice(0, 2).join(" · ") || "중립 구간입니다.";
   $("asset-label").textContent = decision.asset_class.toUpperCase();
+  const componentBounds = {trend: 42, momentum: 24, volatility: 12, volume: 14, confirmation: 12};
   const components = Object.entries(decision.components).map(([name, value]) => {
-    const width = Math.min(50, Math.abs(value) / 72 * 100);
+    const width = Math.min(50, Math.abs(value) / (componentBounds[name] || 100) * 50);
     return `<div class="bar-row"><span>${name}</span><div class="bar-track"><i class="bar-fill ${value < 0 ? "negative" : ""}" style="width:${width}%"></i></div><b>${value > 0 ? "+" : ""}${number(value)}</b></div>`;
   }).join("");
   $("components").innerHTML = components;
+  const snapshot = decision.snapshot;
+  const adxState = snapshot.adx == null ? "NO ADX" : snapshot.adx >= 25 ? "STRONG TREND" : snapshot.adx >= 15 ? "DEVELOPING TREND" : "WEAK / RANGE";
+  const directionalBias = snapshot.plus_di == null || snapshot.minus_di == null ? "중립" : snapshot.plus_di > snapshot.minus_di ? "상승 우위" : snapshot.plus_di < snapshot.minus_di ? "하락 우위" : "중립";
+  const vwapDistance = snapshot.vwap ? (snapshot.close / snapshot.vwap - 1) * 100 : null;
+  const confirmation = decision.components.confirmation || 0;
+  $("adaptive-status").textContent = adxState;
+  $("adx").textContent = number(snapshot.adx);
+  $("directional-index").textContent = `${number(snapshot.plus_di, 1)} / ${number(snapshot.minus_di, 1)}`;
+  $("mfi").textContent = number(snapshot.mfi);
+  $("roc").textContent = percent(snapshot.roc);
+  $("vwap-distance").textContent = percent(vwapDistance);
+  $("vwap-distance").className = vwapDistance == null ? "" : vwapDistance >= 0 ? "positive" : "negative";
+  $("component-agreement").textContent = percent(decision.agreement_pct);
+  $("conflict-penalty").textContent = `-${number(decision.conflict_penalty)}`;
+  $("adaptive-note").textContent = `${directionalBias} · 확인 점수 ${confirmation > 0 ? "+" : ""}${number(confirmation)} · 점수가 같아도 충돌이 클수록 신뢰도는 낮아집니다.`;
   $("direction").textContent = risk.direction;
   $("entry").textContent = number(risk.entry_price, 6);
   $("stop").textContent = number(risk.stop_loss, 6);

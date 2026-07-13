@@ -103,6 +103,12 @@ class IndicatorSnapshot:
     stochastic_d: float | None
     obv: float | None
     volume_ratio: float | None
+    adx: float | None
+    plus_di: float | None
+    minus_di: float | None
+    mfi: float | None
+    roc: float | None
+    vwap: float | None
 
     def as_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {}
@@ -119,6 +125,8 @@ class SignalDecision:
     signal: Signal
     score: float
     confidence: float
+    agreement_pct: float
+    conflict_penalty: float
     snapshot: IndicatorSnapshot
     components: dict[str, float]
     reasons: tuple[str, ...]
@@ -130,6 +138,8 @@ class SignalDecision:
             "signal": self.signal.value,
             "score": self.score,
             "confidence": self.confidence,
+            "agreement_pct": self.agreement_pct,
+            "conflict_penalty": self.conflict_penalty,
             "components": self.components,
             "reasons": list(self.reasons),
             "snapshot": self.snapshot.as_dict(),

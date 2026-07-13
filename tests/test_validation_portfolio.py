@@ -54,7 +54,11 @@ class ValidationAndPortfolioTest(unittest.TestCase):
             [
                 MarketSeries("BULL1", AssetClass.CRYPTO, bullish),
                 MarketSeries("BULL2", AssetClass.STOCK, bullish),
-                MarketSeries("HOLD", AssetClass.CRYPTO, synthetic_candles(trend=0.12)),
+                MarketSeries(
+                    "HOLD",
+                    AssetClass.CRYPTO,
+                    synthetic_candles(trend=0, oscillation=0),
+                ),
             ],
             account_equity=20_000,
             total_allocation_pct=80,
@@ -76,7 +80,13 @@ class ValidationAndPortfolioTest(unittest.TestCase):
 
     def test_empty_portfolio_does_not_claim_diversification(self) -> None:
         result = PortfolioAllocator().allocate(
-            [MarketSeries("HOLD", AssetClass.CRYPTO, synthetic_candles())]
+            [
+                MarketSeries(
+                    "HOLD",
+                    AssetClass.CRYPTO,
+                    synthetic_candles(trend=0, oscillation=0),
+                )
+            ]
         )
         self.assertEqual(result.invested_pct, 0)
         self.assertEqual(result.diversification_score, 0)
