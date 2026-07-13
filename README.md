@@ -1,6 +1,6 @@
 # Unified Market Indicator
 
-주식과 코인을 같은 OHLCV 모델로 분석하는 기술적 지표·복합 시그널·백테스트 엔진입니다.
+주식과 코인을 같은 OHLCV 모델로 분석하는 기술적 지표·복합 시그널·리스크 관리·백테스트 플랫폼입니다.
 
 하나의 지표만 맹신하지 않고 추세, 모멘텀, 변동성, 거래량을 각각 계산한 뒤 자산군별
 프로필로 합산합니다. 주식과 24시간 거래되는 코인의 변동성 차이는 서로 다른 임계값으로
@@ -13,9 +13,11 @@
 - 추세·모멘텀·변동성·거래량 4개 구성 점수
 - `STRONG_BUY`, `BUY`, `HOLD`, `SELL`, `STRONG_SELL` 판정
 - 주식·코인별 임계값과 고변동성 감점
-- 수수료·슬리피지·MDD·승률을 포함한 롱 전용 백테스트
+- ATR 기반 손절·익절, 거래당 위험예산, 최대 배분 한도를 포함한 포지션 계획
+- 여러 주식·코인을 신뢰도와 신호 강도로 정렬하는 통합 스캐너
+- 수수료·슬리피지·MDD·Sharpe·Profit Factor·벤치마크 초과수익 백테스트
 - Yahoo Finance, Binance, Upbit 공개 시세 어댑터
-- CSV/JSON CLI 및 의존성 없는 JSON HTTP API
+- CSV/JSON CLI, 의존성 없는 JSON HTTP API, 반응형 웹 대시보드
 - Python 3.11–3.13 CI, Docker 이미지 검증
 
 ## 빠른 시작
@@ -30,6 +32,13 @@ unified-indicator analyze \
   --symbol AAPL \
   --asset-class stock \
   --input examples/sample_ohlcv.csv
+```
+
+대시보드는 별도 프론트엔드 설치 없이 실행됩니다.
+
+```bash
+unified-indicator serve --host 127.0.0.1 --port 8080
+# 브라우저에서 http://127.0.0.1:8080 접속
 ```
 
 Windows PowerShell에서는 가상환경 활성화 명령만 다음처럼 바꿉니다.
@@ -64,11 +73,55 @@ unified-indicator backtest \
   --input data/btc.csv \
   --initial-capital 10000000 \
   --fee-bps 10 \
-  --slippage-bps 5
+  --slippage-bps 5 \
+  --risk-per-trade-pct 1 \
+  --max-allocation-pct 25 \
+  --atr-stop-multiple 2 \
+  --reward-risk-ratio 2
 ```
 
 백테스트는 각 시점에서 그때까지 확정된 캔들만 사용해 미래 데이터 참조를 피합니다.
 매수·매도 체결 가격에 슬리피지를 적용하고 거래 수수료를 차감합니다.
+
+추가 결과에는 Buy & Hold 벤치마크, 초과수익, 연환산 수익률, Sharpe Ratio,
+Profit Factor, 평균 거래수익률, 시장 노출도와 손절·익절 횟수가 포함됩니다.
+
+## 포지션 리스크 계획
+
+```bash
+unified-indicator risk \
+  --symbol BTCUSDT \
+  --asset-class crypto \
+  --input data/btc.csv \
+  --account-equity 10000000 \
+  --risk-pct 1 \
+  --max-allocation-pct 25
+```
+
+현재 ATR과 계좌 평가액을 기준으로 진입 기준가, 손절가, 목표가, 수량, 실제 위험액을
+계산합니다. `HOLD`인 경우 포지션 수량은 0으로 반환됩니다.
+
+## 다중 종목 스캔
+
+스캔 매니페스트는 분석할 로컬 데이터 파일을 나열합니다.
+
+```json
+[
+  {"symbol": "AAPL", "asset_class": "stock", "input": "sample_ohlcv.csv"},
+  {"symbol": "BTCUSDT", "asset_class": "crypto", "input": "sample_ohlcv.csv"}
+]
+```
+
+```bash
+unified-indicator scan \
+  --manifest examples/scan_manifest.json \
+  --direction all \
+  --min-confidence 30 \
+  --limit 10
+```
+
+`opportunity_score = abs(signal score) × confidence / 100`으로 계산해 강한 양방향 기회를
+우선 정렬하며 `bullish`, `bearish` 필터를 지원합니다.
 
 ## HTTP API
 
@@ -78,6 +131,8 @@ curl http://127.0.0.1:8080/health
 ```
 
 - `POST /analyze`
+- `POST /risk-plan`
+- `POST /scan`
 - `POST /backtest`
 
 요청 본문 예시:
@@ -129,8 +184,11 @@ src/unified_market_indicator/
 ├── indicators.py        # 순수 기술지표
 ├── engine.py            # 통합 점수와 시그널
 ├── backtest.py          # 비용·MDD 포함 백테스트
-├── cli.py               # analyze/fetch/backtest/serve
-├── server.py            # 표준 라이브러리 HTTP API
+├── risk.py              # ATR 포지션·손절·목표 계획
+├── scanner.py           # 다중 자산 랭킹
+├── cli.py               # analyze/risk/scan/fetch/backtest/serve
+├── server.py            # HTTP API와 대시보드 서버
+├── static/              # 의존성 없는 반응형 대시보드
 └── providers/           # Yahoo/Binance/Upbit
 ```
 

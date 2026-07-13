@@ -1,4 +1,4 @@
-.PHONY: install test check sample
+.PHONY: install test check sample serve
 
 install:
 	python -m pip install -e .
@@ -13,3 +13,6 @@ check:
 sample:
 	python examples/generate_sample.py
 	unified-indicator analyze --symbol AAPL --asset-class stock --input examples/sample_ohlcv.csv
+
+serve:
+	unified-indicator serve --host 127.0.0.1 --port 8080

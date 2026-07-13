@@ -122,6 +122,74 @@ class SignalDecision:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class RiskPlan:
+    symbol: str
+    asset_class: AssetClass
+    direction: str
+    entry_price: float
+    stop_loss: float | None
+    take_profit: float | None
+    position_size: float
+    position_value: float
+    risk_amount: float
+    risk_per_unit: float
+    reward_risk_ratio: float
+    account_risk_pct: float
+    allocation_pct: float
+    warnings: tuple[str, ...] = ()
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "asset_class": self.asset_class.value,
+            "direction": self.direction,
+            "entry_price": self.entry_price,
+            "stop_loss": self.stop_loss,
+            "take_profit": self.take_profit,
+            "position_size": self.position_size,
+            "position_value": self.position_value,
+            "risk_amount": self.risk_amount,
+            "risk_per_unit": self.risk_per_unit,
+            "reward_risk_ratio": self.reward_risk_ratio,
+            "account_risk_pct": self.account_risk_pct,
+            "allocation_pct": self.allocation_pct,
+            "warnings": list(self.warnings),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ScanItem:
+    rank: int
+    opportunity_score: float
+    decision: SignalDecision
+    risk_plan: RiskPlan
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "rank": self.rank,
+            "opportunity_score": self.opportunity_score,
+            "decision": self.decision.as_dict(),
+            "risk_plan": self.risk_plan.as_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ScanResult:
+    generated_at: datetime
+    total_markets: int
+    matched_markets: int
+    items: tuple[ScanItem, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "generated_at": self.generated_at.isoformat(),
+            "total_markets": self.total_markets,
+            "matched_markets": self.matched_markets,
+            "items": [item.as_dict() for item in self.items],
+        }
+
+
 @dataclass(slots=True)
 class BacktestResult:
     symbol: str
@@ -134,6 +202,15 @@ class BacktestResult:
     winning_trades: int
     losing_trades: int
     win_rate_pct: float
+    benchmark_return_pct: float
+    excess_return_pct: float
+    annualized_return_pct: float
+    sharpe_ratio: float
+    profit_factor: float | None
+    average_trade_return_pct: float
+    exposure_pct: float
+    stop_loss_exits: int
+    take_profit_exits: int
     equity_curve: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -148,5 +225,14 @@ class BacktestResult:
             "winning_trades": self.winning_trades,
             "losing_trades": self.losing_trades,
             "win_rate_pct": self.win_rate_pct,
+            "benchmark_return_pct": self.benchmark_return_pct,
+            "excess_return_pct": self.excess_return_pct,
+            "annualized_return_pct": self.annualized_return_pct,
+            "sharpe_ratio": self.sharpe_ratio,
+            "profit_factor": self.profit_factor,
+            "average_trade_return_pct": self.average_trade_return_pct,
+            "exposure_pct": self.exposure_pct,
+            "stop_loss_exits": self.stop_loss_exits,
+            "take_profit_exits": self.take_profit_exits,
             "equity_curve": self.equity_curve,
         }

@@ -1,0 +1,12 @@
+[
+  {
+    "symbol": "AAPL",
+    "asset_class": "stock",
+    "input": "sample_ohlcv.csv"
+  },
+  {
+    "symbol": "BTCUSDT",
+    "asset_class": "crypto",
+    "input": "sample_ohlcv.csv"
+  }
+]

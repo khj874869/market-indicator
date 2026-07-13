@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Market Signal Lab</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><span class="brand-mark">M</span><div><b>MARKET SIGNAL LAB</b><small>STOCK + CRYPTO INTELLIGENCE</small></div></div>
+      <div class="status"><span></span>ENGINE ONLINE · v0.2</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div><p class="eyebrow">UNIFIED MARKET RESEARCH</p><h1>신호보다 먼저,<br><em>리스크를 계산합니다.</em></h1><p>추세·모멘텀·변동성·거래량을 하나의 점수로 통합하고 ATR 기준 포지션 계획과 비용 반영 백테스트를 제공합니다.</p></div>
+        <div class="hero-orbit"><div class="orbit-value" id="hero-score">--</div><span>COMPOSITE SCORE</span></div>
+      </section>
+
+      <section class="control-panel">
+        <label>심볼<input id="symbol" value="BTCUSDT" autocomplete="off"></label>
+        <label>자산군<select id="asset-class"><option value="crypto">Crypto</option><option value="stock">Stock</option></select></label>
+        <label>계좌 평가액<input id="equity" type="number" min="1" value="10000"></label>
+        <label>거래당 위험 %<input id="risk" type="number" min="0.1" max="100" step="0.1" value="1"></label>
+        <div class="actions"><button id="sample" class="button ghost">샘플 생성</button><button id="analyze" class="button primary">분석 실행</button><button id="backtest" class="button">백테스트</button></div>
+      </section>
+
+      <details class="data-panel"><summary>OHLCV JSON 데이터 <span id="candle-count">0 CANDLES</span></summary><textarea id="candles" spellcheck="false"></textarea></details>
+      <div id="error" role="alert"></div>
+
+      <section class="grid">
+        <article class="card signal-card">
+          <div class="card-head"><span>LIVE DECISION</span><span id="asset-label">CRYPTO</span></div>
+          <div class="signal-content"><div><div id="signal" class="signal neutral">READY</div><p id="reason">샘플 데이터를 생성한 뒤 분석을 실행하세요.</p></div><div class="confidence"><b id="confidence">--</b><span>CONFIDENCE</span></div></div>
+        </article>
+
+        <article class="card component-card">
+          <div class="card-head"><span>SCORE BREAKDOWN</span><span>-100 / +100</span></div>
+          <div id="components" class="bars"><p class="empty">분석 대기 중</p></div>
+        </article>
+
+        <article class="card risk-card">
+          <div class="card-head"><span>ATR RISK PLAN</span><span id="direction">FLAT</span></div>
+          <div class="metric-grid">
+            <div><span>진입 기준가</span><b id="entry">--</b></div><div><span>손절가</span><b id="stop">--</b></div>
+            <div><span>목표가</span><b id="target">--</b></div><div><span>포지션 수량</span><b id="size">--</b></div>
+            <div><span>예상 위험액</span><b id="risk-amount">--</b></div><div><span>배분 비중</span><b id="allocation">--</b></div>
+          </div>
+          <p id="warning" class="warning">신호 분석 후 계산됩니다.</p>
+        </article>
+
+        <article class="card chart-card">
+          <div class="card-head"><span>EQUITY CURVE</span><span id="curve-label">NO BACKTEST</span></div>
+          <canvas id="chart" width="960" height="320"></canvas>
+        </article>
+
+        <article class="card performance-card">
+          <div class="card-head"><span>PERFORMANCE</span><span>COST ADJUSTED</span></div>
+          <div class="metric-grid compact">
+            <div><span>총 수익률</span><b id="return">--</b></div><div><span>벤치마크 초과</span><b id="excess">--</b></div>
+            <div><span>최대 낙폭</span><b id="drawdown">--</b></div><div><span>Sharpe</span><b id="sharpe">--</b></div>
+            <div><span>승률</span><b id="win-rate">--</b></div><div><span>Profit Factor</span><b id="profit-factor">--</b></div>
+          </div>
+        </article>
+      </section>
+    </main>
+    <footer>RESEARCH TOOL · NOT FINANCIAL ADVICE <span>Local-first / No API key required</span></footer>
+  </div>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

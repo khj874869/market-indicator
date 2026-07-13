@@ -40,6 +40,9 @@ class EngineTest(unittest.TestCase):
         self.assertGreaterEqual(result.max_drawdown_pct, 0)
         self.assertEqual(len(result.equity_curve), len(self.candles) - self.engine.minimum_candles)
         self.assertEqual(result.winning_trades + result.losing_trades, result.trades)
+        self.assertLessEqual(result.stop_loss_exits + result.take_profit_exits, result.trades)
+        self.assertIsInstance(result.sharpe_ratio, float)
+        self.assertEqual(result.excess_return_pct, round(result.total_return_pct - result.benchmark_return_pct, 4))
 
 
 if __name__ == "__main__":
