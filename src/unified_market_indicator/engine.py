@@ -65,6 +65,9 @@ class UnifiedIndicatorEngine:
             reasons=tuple(reasons),
         )
 
+    def signal_for_score(self, asset_class: AssetClass, score: float) -> Signal:
+        return self._signal(score, PROFILES[asset_class])
+
     @staticmethod
     def _trend_score(latest, reasons: list[str]) -> float:
         score = 0.0

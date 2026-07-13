@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unified-market-indicator"
-version = "0.2.0"
+version = "0.3.0"
 description = "Dependency-free stock and crypto technical indicator, signal, and backtesting engine."
 readme = "README.md"
 requires-python = ">=3.11"

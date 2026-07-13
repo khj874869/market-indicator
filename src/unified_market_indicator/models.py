@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field, fields
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -19,6 +20,14 @@ class Signal(StrEnum):
     STRONG_SELL = "STRONG_SELL"
 
 
+class MarketRegime(StrEnum):
+    BULL_TREND = "BULL_TREND"
+    BEAR_TREND = "BEAR_TREND"
+    RANGE_BOUND = "RANGE_BOUND"
+    HIGH_VOLATILITY = "HIGH_VOLATILITY"
+    TRANSITION = "TRANSITION"
+
+
 @dataclass(frozen=True, slots=True)
 class Candle:
     timestamp: datetime
@@ -29,9 +38,14 @@ class Candle:
     volume: float
 
     def __post_init__(self) -> None:
-        values = (self.open, self.high, self.low, self.close, self.volume)
-        if any(value < 0 for value in values):
-            raise ValueError("OHLCV values cannot be negative")
+        prices = (self.open, self.high, self.low, self.close)
+        values = (*prices, self.volume)
+        if any(not math.isfinite(value) for value in values):
+            raise ValueError("OHLCV values must be finite")
+        if any(value <= 0 for value in prices):
+            raise ValueError("OHLC prices must be positive")
+        if self.volume < 0:
+            raise ValueError("volume cannot be negative")
         if self.high < max(self.open, self.close, self.low):
             raise ValueError("high must be the largest OHLC value")
         if self.low > min(self.open, self.close, self.high):
@@ -187,6 +201,112 @@ class ScanResult:
             "total_markets": self.total_markets,
             "matched_markets": self.matched_markets,
             "items": [item.as_dict() for item in self.items],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class DataQualityReport:
+    candle_count: int
+    start: datetime | None
+    end: datetime | None
+    inferred_interval_seconds: float | None
+    duplicate_timestamps: int
+    out_of_order_records: int
+    gap_events: int
+    missing_candles_estimate: int
+    max_gap_multiple: float
+    zero_volume_records: int
+    suspicious_price_jumps: int
+    interval_regularity_pct: float
+    quality_score: float
+    grade: str
+    issues: tuple[str, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "candle_count": self.candle_count,
+            "start": self.start.isoformat() if self.start else None,
+            "end": self.end.isoformat() if self.end else None,
+            "inferred_interval_seconds": self.inferred_interval_seconds,
+            "duplicate_timestamps": self.duplicate_timestamps,
+            "out_of_order_records": self.out_of_order_records,
+            "gap_events": self.gap_events,
+            "missing_candles_estimate": self.missing_candles_estimate,
+            "max_gap_multiple": self.max_gap_multiple,
+            "zero_volume_records": self.zero_volume_records,
+            "suspicious_price_jumps": self.suspicious_price_jumps,
+            "interval_regularity_pct": self.interval_regularity_pct,
+            "quality_score": self.quality_score,
+            "grade": self.grade,
+            "issues": list(self.issues),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RegimeReport:
+    regime: MarketRegime
+    confidence: float
+    trend_spread_pct: float
+    trend_slope_pct: float
+    momentum_pct: float
+    atr_pct: float
+    realized_volatility_pct: float
+    reasons: tuple[str, ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "regime": self.regime.value,
+            "confidence": self.confidence,
+            "trend_spread_pct": self.trend_spread_pct,
+            "trend_slope_pct": self.trend_slope_pct,
+            "momentum_pct": self.momentum_pct,
+            "atr_pct": self.atr_pct,
+            "realized_volatility_pct": self.realized_volatility_pct,
+            "reasons": list(self.reasons),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TimeframeAnalysisItem:
+    timeframe: str
+    candle_count: int
+    weight: float
+    decision: SignalDecision
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "timeframe": self.timeframe,
+            "candle_count": self.candle_count,
+            "weight": self.weight,
+            "decision": self.decision.as_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class MultiTimeframeResult:
+    symbol: str
+    asset_class: AssetClass
+    consensus_signal: Signal
+    consensus_score: float
+    confidence: float
+    agreement_pct: float
+    regime: RegimeReport
+    quality: DataQualityReport
+    timeframes: tuple[TimeframeAnalysisItem, ...]
+    skipped_timeframes: dict[str, str]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "asset_class": self.asset_class.value,
+            "consensus_signal": self.consensus_signal.value,
+            "consensus_score": self.consensus_score,
+            "confidence": self.confidence,
+            "agreement_pct": self.agreement_pct,
+            "regime": self.regime.as_dict(),
+            "quality": self.quality.as_dict(),
+            "timeframes": [item.as_dict() for item in self.timeframes],
+            "skipped_timeframes": self.skipped_timeframes,
         }
 
 

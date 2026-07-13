@@ -15,6 +15,9 @@
 - 주식·코인별 임계값과 고변동성 감점
 - ATR 기반 손절·익절, 거래당 위험예산, 최대 배분 한도를 포함한 포지션 계획
 - 여러 주식·코인을 신뢰도와 신호 강도로 정렬하는 통합 스캐너
+- 중복·시간 공백·순서 오류·거래량 누락·비정상 급등락 OHLCV 품질 진단
+- 상승·하락·횡보·고변동·전환 시장 국면 탐지
+- `15m`, `1h`, `4h`, `1d` 등 다중 시간대 가중 합의와 불일치 감점
 - 수수료·슬리피지·MDD·Sharpe·Profit Factor·벤치마크 초과수익 백테스트
 - Yahoo Finance, Binance, Upbit 공개 시세 어댑터
 - CSV/JSON CLI, 의존성 없는 JSON HTTP API, 반응형 웹 대시보드
@@ -101,6 +104,36 @@ unified-indicator risk \
 현재 ATR과 계좌 평가액을 기준으로 진입 기준가, 손절가, 목표가, 수량, 실제 위험액을
 계산합니다. `HOLD`인 경우 포지션 수량은 0으로 반환됩니다.
 
+## 데이터 품질과 시장 국면
+
+```bash
+unified-indicator quality \
+  --asset-class crypto \
+  --input data/btc.csv
+
+unified-indicator regime \
+  --asset-class crypto \
+  --input data/btc.csv
+```
+
+품질 진단은 추정 데이터 간격, 정규성, 중복 시각, 누락 추정 봉, 0 거래량과 자산군별
+비정상 가격 점프를 평가해 `A`부터 `F`까지 등급을 반환합니다. 시장 국면은 이동평균
+스프레드·기울기, 20기간 모멘텀, ATR, 실현변동성으로 분류합니다.
+
+## 다중 시간대 합의
+
+```bash
+unified-indicator multi \
+  --symbol BTCUSDT \
+  --asset-class crypto \
+  --input data/btc.csv \
+  --timeframes 1h,4h,1d
+```
+
+장기 시간대에 더 높은 가중치를 부여하고 시간대별 방향 일치율을 최종 신뢰도에 반영합니다.
+상승 국면의 하락 신호, 하락 국면의 상승 신호, 고변동성 구간의 신호는 자동 감점됩니다.
+리샘플링 후 60봉을 확보하지 못한 시간대는 오류 대신 제외 사유와 함께 반환됩니다.
+
 ## 다중 종목 스캔
 
 스캔 매니페스트는 분석할 로컬 데이터 파일을 나열합니다.
@@ -131,6 +164,9 @@ curl http://127.0.0.1:8080/health
 ```
 
 - `POST /analyze`
+- `POST /quality`
+- `POST /regime`
+- `POST /multi-timeframe`
 - `POST /risk-plan`
 - `POST /scan`
 - `POST /backtest`
@@ -186,7 +222,10 @@ src/unified_market_indicator/
 ├── backtest.py          # 비용·MDD 포함 백테스트
 ├── risk.py              # ATR 포지션·손절·목표 계획
 ├── scanner.py           # 다중 자산 랭킹
-├── cli.py               # analyze/risk/scan/fetch/backtest/serve
+├── quality.py           # OHLCV 무결성·시간 간격 진단
+├── regime.py            # 시장 국면 분류
+├── timeframe.py         # 리샘플링·다중 시간대 합의
+├── cli.py               # analyze/quality/regime/multi/risk/scan 등
 ├── server.py            # HTTP API와 대시보드 서버
 ├── static/              # 의존성 없는 반응형 대시보드
 └── providers/           # Yahoo/Binance/Upbit

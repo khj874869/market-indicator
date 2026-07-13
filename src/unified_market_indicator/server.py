@@ -8,16 +8,19 @@ from typing import Any
 
 from .backtest import Backtester
 from .engine import UnifiedIndicatorEngine
-from .models import AssetClass, Candle
+from .models import AssetClass, Candle, SignalDecision
+from .quality import DataQualityAnalyzer
+from .regime import MarketRegimeDetector
 from .risk import RiskManager
 from .scanner import MarketScanner, MarketSeries
+from .timeframe import MultiTimeframeAnalyzer
 
 
 def _candles(payload: dict[str, Any]) -> list[Candle]:
     return [Candle.from_mapping(row) for row in payload["candles"]]
 
 
-def _decision_object(payload: dict[str, Any]):
+def _decision_object(payload: dict[str, Any]) -> SignalDecision:
     return UnifiedIndicatorEngine().analyze(
         payload["symbol"],
         AssetClass(payload["asset_class"]),
@@ -27,6 +30,33 @@ def _decision_object(payload: dict[str, Any]):
 
 def _decision(payload: dict[str, Any]) -> dict[str, Any]:
     return _decision_object(payload).as_dict()
+
+
+def _quality(payload: dict[str, Any]) -> dict[str, Any]:
+    return DataQualityAnalyzer().analyze(
+        _candles(payload), AssetClass(payload["asset_class"])
+    ).as_dict()
+
+
+def _regime(payload: dict[str, Any]) -> dict[str, Any]:
+    return MarketRegimeDetector().detect(
+        _candles(payload), AssetClass(payload["asset_class"])
+    ).as_dict()
+
+
+def _multi_timeframe(payload: dict[str, Any]) -> dict[str, Any]:
+    raw_timeframes = payload.get("timeframes", ["1h", "4h", "1d"])
+    timeframes = (
+        [item.strip() for item in raw_timeframes.split(",") if item.strip()]
+        if isinstance(raw_timeframes, str)
+        else [str(item) for item in raw_timeframes]
+    )
+    return MultiTimeframeAnalyzer().analyze(
+        payload["symbol"],
+        AssetClass(payload["asset_class"]),
+        _candles(payload),
+        timeframes,
+    ).as_dict()
 
 
 def _risk_plan(payload: dict[str, Any]) -> dict[str, Any]:
@@ -77,15 +107,17 @@ def _backtest(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class IndicatorRequestHandler(BaseHTTPRequestHandler):
-    server_version = "UnifiedMarketIndicator/0.2"
+    server_version = "UnifiedMarketIndicator/0.3"
 
     def do_GET(self) -> None:
         if self.path == "/health":
-            self._send_json(HTTPStatus.OK, {"status": "ok", "version": "0.2.0"})
+            self._send_json(HTTPStatus.OK, {"status": "ok", "version": "0.3.0"})
         elif self.path == "/":
             self._send_asset("index.html", "text/html; charset=utf-8")
         elif self.path == "/assets/styles.css":
             self._send_asset("styles.css", "text/css; charset=utf-8")
+        elif self.path == "/assets/context.css":
+            self._send_asset("context.css", "text/css; charset=utf-8")
         elif self.path == "/assets/app.js":
             self._send_asset("app.js", "text/javascript; charset=utf-8")
         else:
@@ -99,6 +131,9 @@ class IndicatorRequestHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             handlers = {
                 "/analyze": _decision,
+                "/quality": _quality,
+                "/regime": _regime,
+                "/multi-timeframe": _multi_timeframe,
                 "/risk-plan": _risk_plan,
                 "/scan": _scan,
                 "/backtest": _backtest,

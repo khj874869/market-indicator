@@ -17,7 +17,8 @@ function sampleCandles() {
 
 function payload() {
   const candles = JSON.parse($("candles").value || "[]");
-  return {symbol: $("symbol").value.trim(), asset_class: $("asset-class").value, account_equity: Number($("equity").value), risk_pct: Number($("risk").value), candles};
+  const timeframes = $("timeframes").value.split(",").map((value) => value.trim()).filter(Boolean);
+  return {symbol: $("symbol").value.trim(), asset_class: $("asset-class").value, account_equity: Number($("equity").value), risk_pct: Number($("risk").value), timeframes, candles};
 }
 
 async function request(path, body) {
@@ -49,12 +50,32 @@ function showDecision(decision, risk) {
   $("warning").textContent = risk.warnings.join(" · ") || `Risk / Reward 1 : ${risk.reward_risk_ratio}`;
 }
 
+function showContext(context) {
+  $("hero-score").textContent = number(context.consensus_score, 0);
+  $("regime").textContent = context.regime.regime.replaceAll("_", " ");
+  $("regime-confidence").textContent = percent(context.regime.confidence);
+  $("quality-grade").textContent = context.quality.grade;
+  $("quality-grade").className = `quality-${context.quality.grade.toLowerCase()}`;
+  $("quality-score").textContent = number(context.quality.quality_score, 0);
+  $("agreement").textContent = percent(context.agreement_pct);
+  $("consensus").textContent = context.consensus_signal.replaceAll("_", " ");
+  $("quality-issue").textContent = context.quality.issues.join(" · ");
+  $("timeframe-summary").textContent = `${context.timeframes.length} ACTIVE · ${Object.keys(context.skipped_timeframes).length} SKIPPED`;
+  const header = '<div class="timeframe-row header"><span>TIMEFRAME</span><span>SIGNAL</span><span>SCORE</span><span>CONFIDENCE</span><span>WEIGHT</span></div>';
+  const rows = context.timeframes.map((item) => {
+    const negative = item.decision.score < 0 ? "negative" : "";
+    return `<div class="timeframe-row"><b>${item.timeframe}</b><span>${item.decision.signal.replaceAll("_", " ")}</span><span class="${negative}">${number(item.decision.score)}</span><span>${percent(item.decision.confidence)}</span><span>${percent(item.weight * 100)}</span></div>`;
+  }).join("");
+  $("timeframe-table").innerHTML = header + rows;
+}
+
 async function analyze() {
   setBusy(true); clearError();
   try {
     const body = payload();
-    const [decision, risk] = await Promise.all([request("/analyze", body), request("/risk-plan", body)]);
+    const [decision, risk, context] = await Promise.all([request("/analyze", body), request("/risk-plan", body), request("/multi-timeframe", body)]);
     showDecision(decision, risk);
+    showContext(context);
   } catch (error) { showError(error); } finally { setBusy(false); }
 }
 

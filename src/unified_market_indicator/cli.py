@@ -9,9 +9,12 @@ from .engine import UnifiedIndicatorEngine
 from .io import read_candles, write_candles
 from .models import AssetClass
 from .providers import PROVIDERS
+from .quality import DataQualityAnalyzer
+from .regime import MarketRegimeDetector
 from .risk import RiskManager
 from .scanner import MarketScanner, MarketSeries
 from .server import serve
+from .timeframe import MultiTimeframeAnalyzer
 
 
 def _asset_class(value: str) -> AssetClass:
@@ -23,13 +26,27 @@ def build_parser() -> argparse.ArgumentParser:
         prog="unified-indicator",
         description="Unified technical indicator engine for stocks and crypto.",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 0.2.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 0.3.0")
     commands = parser.add_subparsers(dest="command", required=True)
 
     analyze = commands.add_parser("analyze", help="Analyze a local OHLCV file")
     analyze.add_argument("--symbol", required=True)
     analyze.add_argument("--asset-class", type=_asset_class, choices=list(AssetClass), required=True)
     analyze.add_argument("--input", type=Path, required=True)
+
+    quality = commands.add_parser("quality", help="Audit OHLCV data integrity and regularity")
+    quality.add_argument("--asset-class", type=_asset_class, choices=list(AssetClass), required=True)
+    quality.add_argument("--input", type=Path, required=True)
+
+    regime = commands.add_parser("regime", help="Classify the current market regime")
+    regime.add_argument("--asset-class", type=_asset_class, choices=list(AssetClass), required=True)
+    regime.add_argument("--input", type=Path, required=True)
+
+    multi = commands.add_parser("multi", help="Build a multi-timeframe consensus signal")
+    multi.add_argument("--symbol", required=True)
+    multi.add_argument("--asset-class", type=_asset_class, choices=list(AssetClass), required=True)
+    multi.add_argument("--input", type=Path, required=True)
+    multi.add_argument("--timeframes", default="1h,4h,1d")
 
     risk = commands.add_parser("risk", help="Create an ATR-based position and exit plan")
     risk.add_argument("--symbol", required=True)
@@ -80,6 +97,21 @@ def main(argv: list[str] | None = None) -> int:
             args.symbol,
             args.asset_class,
             read_candles(args.input),
+        )
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "quality":
+        result = DataQualityAnalyzer().analyze(read_candles(args.input), args.asset_class)
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "regime":
+        result = MarketRegimeDetector().detect(read_candles(args.input), args.asset_class)
+        print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "multi":
+        timeframes = [item.strip() for item in args.timeframes.split(",") if item.strip()]
+        result = MultiTimeframeAnalyzer().analyze(
+            args.symbol,
+            args.asset_class,
+            read_candles(args.input),
+            timeframes,
         )
         print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     elif args.command == "risk":

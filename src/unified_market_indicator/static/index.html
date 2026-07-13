@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Market Signal Lab</title>
   <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/context.css">
 </head>
 <body>
   <div class="shell">
     <header>
       <div class="brand"><span class="brand-mark">M</span><div><b>MARKET SIGNAL LAB</b><small>STOCK + CRYPTO INTELLIGENCE</small></div></div>
-      <div class="status"><span></span>ENGINE ONLINE · v0.2</div>
+      <div class="status"><span></span>ENGINE ONLINE · v0.3</div>
     </header>
 
     <main>
@@ -24,6 +25,7 @@
         <label>자산군<select id="asset-class"><option value="crypto">Crypto</option><option value="stock">Stock</option></select></label>
         <label>계좌 평가액<input id="equity" type="number" min="1" value="10000"></label>
         <label>거래당 위험 %<input id="risk" type="number" min="0.1" max="100" step="0.1" value="1"></label>
+        <label>분석 시간대<input id="timeframes" value="1h,4h,1d" autocomplete="off"></label>
         <div class="actions"><button id="sample" class="button ghost">샘플 생성</button><button id="analyze" class="button primary">분석 실행</button><button id="backtest" class="button">백테스트</button></div>
       </section>
 
@@ -41,6 +43,16 @@
           <div id="components" class="bars"><p class="empty">분석 대기 중</p></div>
         </article>
 
+        <article class="card context-card">
+          <div class="card-head"><span>MARKET CONTEXT</span><span>MULTI-TIMEFRAME</span></div>
+          <div class="metric-grid context-metrics">
+            <div><span>시장 국면</span><b id="regime">--</b></div><div><span>국면 신뢰도</span><b id="regime-confidence">--</b></div>
+            <div><span>데이터 등급</span><b id="quality-grade">--</b></div><div><span>품질 점수</span><b id="quality-score">--</b></div>
+            <div><span>시간대 합의율</span><b id="agreement">--</b></div><div><span>합의 신호</span><b id="consensus">--</b></div>
+          </div>
+          <p id="quality-issue" class="warning">다중 시간대 분석 후 표시됩니다.</p>
+        </article>
+
         <article class="card risk-card">
           <div class="card-head"><span>ATR RISK PLAN</span><span id="direction">FLAT</span></div>
           <div class="metric-grid">
@@ -49,6 +61,11 @@
             <div><span>예상 위험액</span><b id="risk-amount">--</b></div><div><span>배분 비중</span><b id="allocation">--</b></div>
           </div>
           <p id="warning" class="warning">신호 분석 후 계산됩니다.</p>
+        </article>
+
+        <article class="card timeframe-card">
+          <div class="card-head"><span>TIMEFRAME MATRIX</span><span id="timeframe-summary">NO CONSENSUS</span></div>
+          <div id="timeframe-table" class="timeframe-table"><p class="empty">분석 대기 중</p></div>
         </article>
 
         <article class="card chart-card">
